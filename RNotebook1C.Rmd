@@ -1,0 +1,713 @@
+---
+title: "Correction and Interpretation of stable Carbon isotopes/Calculation and interpretatin of physiological indices derived from tree-ring d13C"
+output: html_notebook
+---
+  
+#### COURSE: DISC, LTRR, UNIVERSITY OF ARIZONA. INSTRUCTORS: S. BELMECHERI
+  
+### Instructions:
+  
+The following code and comments should further your experience to analyze and treat tree ring d13C data (including atmosphere and climate data). This exercise relies upon raw tree-ring d13C measurements, atmospheric d13C measurements, and instrumental climate data.
+
+There are a few questions throughout to catalyze understanding and critical thinking. The analysis is broken into four main parts (including 33 questions). At the end, you should have gone through many of the steps commonly used for treating, correcting and, interpreting a d13C time series.
+
+You will need to download the R project from https://github.com/SBelmecheri/DISCO-Notebook1.git and set your own working directory. Once you open the ```DISCO-Notebook1.Rproj``` in R studio you can open the ```RNotebook1.Rmd``` file to proceed with this exercise.
+
+## PART 0: Setting up directories and files.
+
+For the following exercise, you will need the following files in one directory:    
+1. A file containing tree-ring d13C measurements. The filename is "LIL.txt".  
+2. A file containing atmospheric 13C & CO2 data. The filename is "ATM13CO2.txt".  
+3. A file containing regional temperature data. The filename is "CRU_tt.txt".  
+4. A file containing regional precipitation data. The filename is "CRU_PP.txt".  
+4. A file containing regional Vapor pressure deficit data. The filename is "CRU_vpd.txt".  
+
+```{r}
+# check the directory with the following line.
+# getwd()
+
+# You should see the above file names (and anything else in this directory) when you type (or copy and paste) the following line:
+list.files()
+```
+
+If you see these files listed, you're ready to roll!
+
+## PART 1: Importing, plotting, and assessing raw tree-ring isotope data [d13C] & Atmospheric Data
+
+ABOUT THE CHRONOLOGY [LIL, Pinar de Lillo]:   
+* TIME: 1901-2002.   
+* ELEVATION: 1600m a.s.l.   
+* LATITUDE: 43.05.   
+* LONGITUDE: -5.25.   
+* SPECIES: Pinus sylvestris.  
+* STAND STRUCTURE: Open forest.   
+* ASPECT: NW.   
+* SLOPE: 28 degrees.  
+* TIME SPAN: 1901-2002
+Import the tree ring d13C dataset:
+```{r}
+# You will also need to ensure that the name of the file is correct.
+TR13 <- read.table("LIL.txt", header=T)
+
+#convert to a time-series object. 
+TR13.ts <- ts(TR13,start=1901, frequency=1)
+
+#plot the raw data
+ts.plot(TR13.ts,ylab="d13C (permill.VPDB)",xlab="Years", col="#9C964A")
+```
+Question 1: Observe the trend (directionality). What do you see (Optional: You can use the lm function to have a statistic summary of the 13C linear regression)?
+
+Import the atmospheric d13C dataset:
+```{r}
+ATM <- ts((read.table("ATM13CO2.txt", header=T)), start=1901, frequency=1)
+# subset d13C
+ATM.13C <- ATM[,"atm13C"]
+# subset CO2
+ATM.CO2 <- ATM[,"atmCO2"]
+```
+
+Plot the atmospheric data (```ATM.13C``` and ```ATM.CO2```) dataset:
+```{r}
+layout(matrix(1:2,nrow = 1, ncol = 2,byrow = T), widths = c(3,3),heights = c(3,3),respect = TRUE)
+ts.plot(ATM.13C,ylab="d13C (permil.VPDB)",xlab="Years", col="#9C964A",main="d13C")
+ts.plot(ATM.CO2,ylab="CO2 (ppm)",xlab="Years", main="CO2")
+
+```
+
+Question 2: Observe the trend (directionality) and interannual variability. What do you see? 
+Question 3: Describe and interpret the relationship between the decline in d13C and the increase in CO2 concentration?
+
+```{r}
+# plot the raw tree ring d13C dataset and the atmospheric d13C dataset
+layout(matrix(1:2,nrow = 1, ncol = 2,byrow = T), widths = c(3,3),heights = c(3,3),respect = TRUE)
+ts.plot(TR13.ts,ylab="d13C (permill.VPDB)",xlab="Years", col="#9C964A",main="TREE RINGS")
+ts.plot(ATM.13C,ylab="d13C (permill.VPDB)",xlab="Years", main="ATMOSPHERE")
+```
+
+Question 4: Compare both trends (similarities, differences, directionality, magnitude)
+Question 5: Describe the difference between absolute tree ring and atmospheric d13C values. What drives this difference?
+
+## PART 2: Correcting Tree Ring 13C raw Data
+### Suess Effect
+As a consequence of industrialization, the isotopic composition of atmospheric CO2 has changed.  
+This change corresponds to a decline in atmospheric d13C related to burning of fossil fuels (enriched in 12C and/or low in 13C). This trend or effect is (i) termed Suess Effect (Keeling, 1979), (ii) is recorded in tree-ring raw d13C data, and (iii) should therefore be removed before analyzing climate or ecophysiology of a tree ring d13C chronology.
+
+This correction can be made as follows:
+```{r}
+TR13.corr <- TR13.ts -(ATM.13C + 6.61)
+
+# the 6.61  corresponds to the  pre industrial atmospheric d13C value.
+# the correction factor (ATM13.ts + 6.61) is applied to express tree-ring d13C values relative
+# to a pre-industrial standard value of 6.61 permill i.e. remove the trend of 13C that result 
+# from a decline due to the Suess effect.
+
+```
+
+Add the corrected tree ring data to the plot with the raw data:
+```{r}
+ts.plot(TR13.ts,ylab="d13C (permill.VPDB)",xlab="Years", col="#9C964A", ylim=c(-24,-21))
+lines (TR13.corr, col="#F21A00")
+legend("bottomleft",c("d13C raw", "d13C Suess"),lwd= c(1,1), bty = "n", col=c("#9C964A","#F21A00"),
+       text.col=c("#9C964A","#F21A00"),ncol=1)
+
+# Note that you may need to adjust the limits of the Y axis to accommodate the values-range of raw and corrected 13C data. You can do that using ylim=c(,) to set min and max Y axis values.
+```
+
+Question 6: How does the corrected d13C compare to the raw d13C?
+
+### CO~2~ Effect
+The correction of raw 13C tree ring from the Suess effect yields a d13C chronology that contains two signals: atmospheric CO2 and climate. These signals are related to tree physiological response to these environmental variables as reviewed in the stable isotope theory lectures.
+
+Tree-ring d13C chronologies can be corrected for changes in the carbon dioxide content of the atmosphere. This allows analysis and interpretation of d13C variations and trends in response to climate variability/trends only.
+
+This correction, termed PIN correction (for pre-industrial) corresponds to a statistical procedure that calculates the d13C values that would have been obtained under pre-industrial conditions (pre-increase in atmospheric CO2). This procedure has been published by McCarroll et al. 2008 [https://doi.org/10.1016/j.gca.2008.11.041]
+
+Apply the PIN correction to the raw d13C data:
+```{r}
+# First install the PIN R package (change the pathway to your folder)
+install.packages(pkgs="pin_0.5", repos = NULL, type = "source")
+library(pin)
+
+```
+
+the pin function is as follows:
+
+pin(year, d13c, co2, alpha = 0.9, firstyear =, lastyear =)
+
+year = 1D array of years. The years corresponding to the d13C (tree ring) measurements.
+
+d13c = vector of atmospherically corrected d13 C values.
+
+co2  = smoothed atmospheric co2 record (e.g. from mauna loa).
+
+alpha =	the span value used by the loess routine.
+
+firstyear= 	firstyear / lastyear allows selecting a subset of the data.
+
+
+for co2 data, the Mauna Loa data from Keeling are included as a proxy in this package.
+
+However, these data have been updated and the most recent data are included in this Rproject/Notebook (Belmecheri & Lavergne 2021):
+```{r}
+#read atmospheric CO2 data 
+co2 <- ATM.13C
+```
+
+Apply the pin correction:
+
+
+After running this line,  yo will have to go to the console in R  and  press  
+```Hit <Return> to see next plot```
+```{r}
+  
+TR13.corr.pin <- pin(c(1901:2002), TR13.corr, co2, alpha = 0.9, firstyear =1901, lastyear =2002)
+
+# Note: The function generates plots for the various steps of the PIN calculation. You will need to hit return multiple times. Looking carefully at the plots is advised as it demonstrates the theoretical assumptions and bounds of tree physiological responses to increases in atmospheric CO2 concentrations.
+```
+
+
+Add the pin corrected tree ring data to the plot with the raw data and Suess corrected data:
+```{r}
+ts.plot(TR13.ts,ylab="d13C (permill.VPDB)",xlab="Years", col="#9C964A", ylim=c(-24,-21))
+lines(TR13.corr, col="#F21A00")
+lines(TR13.corr.pin, col="#E1AF00", lwd=1.3)
+legend("bottomleft",c("d13C raw", "d13C Suess", "d13C PIN"),lwd= c(1,1,1.3),bty = "n", col=c("#9C964A","#F21A00","#E1AF00"),
+       text.col=c("#9C964A","#F21A00","#E1AF00"),ncol=1)
+
+# Note that you may need to adjust the limits of the Y axis to accommodate the values-range of raw and corrected 13C data. You can do that using ylim=c(,) to set min and max Y axis values.
+
+```
+
+Question 7: How does the PIN-corrected d13C compare to the Suess-corrected and raw d13C?
+
+Question 8: Are the differences between raw and corrected (SUESS, PIN) d13C significant?
+
+## PART 3: Importing instrumental data and computing correlations with tree ring chronologies
+
+### Climatology of the growing season 
+climate data are from the Climatic Research Unit (CRU) for the grid point near the tree-ring data:
+```{r}
+# import gridded temperature data & Convert to a time series 
+gridded.tt.data <- ts(read.table("CRU_TT.txt",header=T),start=1901,frequency=1)
+
+# import gridded precipitation data & Convert to a time series 
+gridded.pp.data <- ts(read.table("CRU_PP.txt",header=T),start=1901,frequency=1)
+
+# import gridded VPD data & Convert to a time series 
+gridded.vpd.data <- ts(read.table("CRU_VPD.txt",header=F, skip=3),start=1901,frequency=1)
+
+```
+
+Explore the climate data (seasonality, trends) for all climate parameters. Below is an example for Temperature:
+```{r}
+# plot temperatures for all months with a legend
+ts.plot(gridded.tt.data,col=1:8,lty=1:3,xlim=c(1870,2002))
+legend("topleft",legend=colnames(gridded.tt.data),col=1:8,lty=1:3,bty = "n")
+
+```
+
+```{r}
+# Calculate and plot temperature seasonality/climatology
+avg.month.tt <- colMeans(window(gridded.tt.data,start=1901,end=2002))
+#Plot the mean monthly temperatures for the 
+barplot(avg.month.tt,las=3,ylim=c(0,20),ylab="Deg C",main="Average Monthly temperatures for LIL")
+
+```
+
+Question 9: Looking at the various climate variables trend and seasonality, describe the growing season conditions?
+
+```{r}
+# repeat these steps for precipitation and VPD.
+```
+
+### Correlation between tree ring d13C and climate data
+
+combine (here a multiple time series object) the tree ring d13C and instrumental data in the same data matrix for correlations.
+
+First, start with d13C corrected for the Suess effect:
+```{r}
+TR13.corr_tt <- ts.union(TR13.corr,gridded.tt.data) # temperature; 
+colnames(TR13.corr_tt) <- c("TR13.corr", colnames(gridded.tt.data))
+TR13.corr_pp <- ts.union(TR13.corr,gridded.pp.data) # precipitation; 
+colnames(TR13.corr_pp) <- c("TR13.corr", colnames(gridded.tt.data))
+TR13.corr_vpd <- ts.union(TR13.corr,gridded.vpd.data) # vapor pressure deficit
+colnames(TR13.corr_vpd) <- c("TR13.corr", colnames(gridded.vpd.data))
+```
+Compute a correlation matrix for temperature:
+```{r}
+TR13.corr_tt.correl <- cor(TR13.corr_tt,use="p")
+# optional, you can add a dashed line for the statustical significance (p value) for the data-length explored here.
+```
+Look at the correlation matrix:
+```{r}
+TR13.corr_tt.correl
+```
+or look at just the first 2 significant digits:
+```{r}
+round(TR13.corr_tt.correl,2)
+```
+
+compute correlation matrices for precipitation and VPD:
+```{r}
+TR13.corr_pp.correl <- cor(TR13.corr_pp,use="p")
+TR13.corr_vpd.correl <- cor(TR13.corr_vpd,use="p")
+```
+
+and plot the correlations between monthly climate data and the d13C corrected for the Suess effect chronology. This will be plotted for the 3 climate variables:
+```{r}
+layout(matrix(1:3,nrow = 1, ncol = 3,byrow = T), widths = c(4,4,4),heights = c(3,3,3),respect = TRUE)
+#Temperature
+barplot(TR13.corr_tt.correl[1,2:13],las=3,col=c("yellow"),ylab="Correlation", main="TEMP", ylim=c(-0.5,0.5))
+#precipitation
+barplot(TR13.corr_pp.correl[1,2:13],las=3,col=c("blue2"),ylab="Correlation", main="PCP", ylim=c(-0.5,0.5))
+# VPD
+barplot(TR13.corr_vpd.correl[1,2:13],las=3,col=c("yellow"),ylab="Correlation", main="VPD", ylim=c(-0.5,0.5))
+```
+
+Question 10: Describe the correlations between d13C and various months of the year/growing season.
+
+Question 11: Do you observe similarities/differences in the d13C response to the seasonality of the climate variables?
+
+Tree growth and physiology respond to climate variation often over several months.Therefore, when investigating the climate signal recorded in d13C or reconstructing climate, we often try to better understand climate response by checking correlations over a wide variety of seasons. This is most easily done by averaging months together and computing correlations.  
+
+An example with March through June temperatures is shown below using the ```"rowMeans()"``` function. This function removes the time-series information so we need to add this back with the ```"ts()"``` function.
+
+Below is a two-steps example for overwriting the initial variable (tt.Mar_Jun)  instead of defining a new one.
+```{r}
+tt.Mar_Jun <- rowMeans(gridded.tt.data[,c(3,4,5,6)])
+tt.Mar_Jun <- ts(tt.Mar_Jun,start=1901,frequency =1)
+```
+
+
+New seasonal windows can then be created for Winter, Spring, summer (June-July-August), or a growing season (e.g. April-September):
+```{r}
+tt.JJA <- ts((rowMeans(gridded.tt.data[,c(6,7,8)])), start = 1901,frequency = 1)
+```
+
+We can then combine this new seasons to our d13C and monthly temperature matrix. The example below can be enhanced with more season developed in the previous step:
+```{r}
+TR13.corr_tt.seasons <- ts.union(TR13.corr_tt, tt.Mar_Jun,tt.JJA)
+```
+
+compute a correlation matrix for temperature with monthly and seasonal data; and rename the columns to something nicer (add more column names corresponding to the seasons computed above):
+```{r}
+TR13.corr_tt.seasons.correl <- cor(TR13.corr_tt.seasons,use="p")
+colnames(TR13.corr_tt.seasons.correl) <- c(colnames(TR13.corr_tt),"Mar_Jun","JJA")
+```
+
+and plot the correlations for the individual months and the seasons you have chosen:
+```{r}
+barplot(TR13.corr_tt.seasons.correl[1,2:15],las=3,col=c("goldenrod2"),ylab="Correlation")
+```
+Compute seasonal correlations for precipitation and VPD:
+```{r}
+# repeat the steps above (combine monthly and seasonal climate-precipitation and vpd with TR13)
+```
+
+Compute correlations with d13C PIN corrected. Use climate matrices with monthly and seasonal windows and combine them to d13C PIN corrected:
+```{r}
+# below is an example for temperature
+TR13.corr.pin_tt.seasons <- ts.union(TR13.corr.pin, TR13.corr_tt,tt.Mar_Jun) 
+# this needs to include more seasonal windows from previous steps
+TR13.corr.pin_tt.seasons.correl <- cor(TR13.corr.pin_tt.seasons,use="p")
+# do the same for precipitation and vpd
+```
+
+### Suess vs. PIN corrections
+Compare the correlations coefficient and seasonality between Suess and PIn d13C:
+```{r}
+# you can use a correlation matrix plot
+# Or a barplot (this can be a grouped barplot using the argument beside=T).
+
+```
+
+Question 12: What do you observe? are there differences, improvement of the correlation coefficients? a change in the significant months?
+
+Question 13: Which correction would you use for a climate reconstruction.
+
+Question 14: Which correction would you use for an ecophysiological study.
+
+## PART 4: Isotopic Discrimination as means to correct d13C
+
+We have seen above that the d13C time series can be treated to remove the effect of declining atmospheric d13C and the effect of increasing atmospheric CO2 concentration (PIN). The Suess Correction is straightforward and necessary as it avoids artifactual trends in tree ring d13C. 
+
+The PIN correction is a statistical treatment to remove the response of tree physiology to CO2, consequently it assumes that this response is bound by two defined stomatal conductance adjustments.
+
+Another way to treat the d13C data is to calculate isotopic discrimination. This procedure takes care of the Suess effect and allows interpreting variation of the isotopic fractionation in term of photosynthesis processes and  availability of leaf internal CO2.
+
+Calculate the isotopic discrimination:
+```{r}
+
+d13C.disc <- (ATM.13C-TR13.ts)/(1+TR13.ts/1000)
+
+# the above is the full & Appropriate equation. It is not unusual to see a simplified version
+# consisting of the numerator term (ATM13.ts-TR13.ts) used in tree ring publications.
+# However, it is strongly suggested to use the full equation as in Farguhar et al., 1982
+```
+
+Plot isotopic discrimination along with d13C corrected from the suess effect:
+```{r}
+plot.ts(TR13.corr, ylab="d13C (permil.VPDB)",xlab="Years", col="#9C964A",lwd=2)
+par(new=T)
+plot.ts(d13C.disc,axes=F, xlab="", ylab="", col="orange",lty=1,lwd=4)
+axis(4, at=seq(15,19 , by=1))
+mtext(side= 4, text = "D13C (permil.VPDB)", line = 2.5)
+
+```
+
+Question 15: What is the difference between the d13C (tree rings d13C corrected from Suess effect) and D13C (isotopic discrimination). Describe the observed trends in terms of isotopic fractionation and associated physiological responses.
+
+Use the climate correlations investigated above to discuss how tree physiology responds to changes in trends and variability of the climate factors and atmospheric CO2 concentration.
+
+
+## PART 5: Calculation and interpretation of physiological indices derived from tree ring d13C
+You will also need to install ```rpmodel``` packages:  
+```{r}
+library(rpmodel)
+```
+
+Import and subset atmospheric data from ```ATM.txt```: 
+```{r}
+ATM <- ts((read.table("ATM.txt", header=T)), start=1901, frequency=1)
+# subset d13C
+ATM.13C <- ATM[,"atm13C"]
+# subset CO2
+ATM.CO2 <- ATM[,"atmCO2"]
+```
+
+Plot the atmospheric data (```ATM.13C``` and ```ATM.CO2```) dataset:
+```{r}
+layout(matrix(1:2,nrow = 1, ncol = 2,byrow = T), widths = c(3,3),heights = c(3,3),respect = TRUE)
+ts.plot(ATM.13C,ylab="d13C (permil.VPDB)",xlab="Years", col="#9C964A",main="d13C")
+ts.plot(ATM.CO2,ylab="CO2 (ppm)",xlab="Years", main="CO2")
+
+```
+ 
+Question 16: Compare both trends. Describe and interpret the relationship between the decline in d13C and the increase in CO2 concentration. 
+
+### PART 5.1: Calculating iWUE- SIMPLE APPROACH 
+
+The Farquhar, O'Leary, and Berry 1982 biochemical model describes the isotopic discrimination against 13C (Δ13C) during carbon diffusion and fixation by plants. The Farquhar et al. equation can be written as follows:
+
+Δ13C = a+(b-a)*(ci/ca)  EQ1
+
+where:  
+
+a=4.4‰ is the fractionation due to CO2 diffusion in air through the stomata.
+
+b= 28‰ is the apparent net fractionation by RuBisCO during carboxylation.
+
+ci and ca are are the leaf intercellular and ambient partial pressure of CO2 (Pa), respectively.
+
+From the equation above EQ1, ci can be calculated as follows:
+
+ci =  ca*(Δ13C-a)/(b-a) EQ2
+
+We know `ca` from measurements. `ca` is in ppm. You can use `ca` in ppm as follows:
+```{r}
+
+ca <- ATM.CO2 # in ppm
+```
+Or use `ca` in Pa as follows:
+```{r}
+# you need  r package "rpmodel"
+library("rpmodel")
+```
+and the function `patm {rpmodel}` to calculate atmospheric pressure at sea level as function of elevation (site elevation).
+```{r}
+elv= 1600 # Elevation above sea-level (m.a.s.l.)
+patm_lil <- patm(elv, patm0 = 101325)
+```
+calculate `ca` as follows:
+```{r}
+ca <- ( 1.e-6 ) * ca * patm_lil  # in Pa
+```
+convert `ca` to a time series:
+```{r}
+ca <- ts(ca, start=1901, frequency=1)
+```
+
+Δ13C (`d13C.disc`) can then be calculated as follows:
+```{r}
+d13C.disc <- (ATM.13C-TR13)/(1+TR13/1000)
+```
+And `ci` as follows:
+```{r}
+a=4.4
+b=28
+ci <-  ca*(d13C.disc-a)/(b-a)
+```
+And the intrinsic water use efficiency`iwue` as follows:
+```{r}
+iwue <- (ca-ci)/1.6
+```
+plot the physiological indices:
+```{r}
+layout(matrix(1:6,nrow = 3, ncol = 2,byrow = F), widths = c(4,4),heights = c(2,2,2),respect = TRUE)
+par(mar=c(4,5,2,0.1))
+ts.plot(TR13,ylab="d13C (permill.VPDB)",xlab="Years", main="OBSERVATIONS")
+ts.plot(d13C.disc,ylab="D13C (permill.VPDB)",xlab="Years", main="")
+ts.plot(ca,ylab="CO2 (pa)",xlab="Years", main="")
+ts.plot(ci,ylab="ci (pa)",xlab="Years", main="FARQUHAR-MODEL")
+ts.plot(iwue,ylab=" iwue (umol/mol)",xlab="Years", main="")
+ts.plot(ci/ca,ylab="ci/ca",xlab="Years", main="")
+
+```
+Question 17: Describe the trends of the various physiological indices.
+
+Question 18: Based on what you have learned in the Isotope theory lectures, describe the tree's physiological response over time at this site.
+
+### PART 5.2: Calculating iWUE- COMPREHENSIVE APPROACH 
+#### Scaling from Stem to leaf
+In the Farquhar et al. model, the d13C is the isotopic ratio for sugars fixed in the leaf. For tree-ring cellulose, a correction factor accounts for the offset of d13C between leaf sugars and tree-ring cellulose. The offset results from post-photosynthetic fractionation processes (Gessler et al., 2014). 
+
+The offset between whole wood and leaves is ~1.3 ± 0.2‰ for oak and conifer species. Additional isotopic offsets include the difference between tree-ring cellulose and bulk wood with an average value of ~1.3 ± 0.2‰, and isotopic depletion between primary assimilates and bulk leaf with values of -0.5 ± 1‰. 
+
+Upscaling d13C measurements from tree rings to the leaf level can significantly improve estimates of Δ13C and reduce uncertainties (offsets) in determining the ratio of ci to ca.
+
+We can scale tree ring d13 to leaf level using a factor `d`.
+
+`d` represents the sum of post-photosynthetic isotope fractionations between the organic leaf matter and the plant material considered. Choose the d value based on the studied material (for this site, it is cellulose)
+
+```{r}
+# WARNING** Choose the appropriate d factor for this site** 
+# You can do this by discarding the d factor that does not correspond to the material analyzed at this site.
+d=1.9 # for d13C measured in wood
+d=2.1 # for d13C measured in cellulose
+```
+
+This correction can be made as follows: 
+```{r}
+d13C.disc.leaf <- (ATM.13C-(TR13-d))/(1+(TR13-d)/1000)
+```
+
+Leaf level ci `ci.leaf` can be calculated as follows:
+```{r}
+ci.leaf <-  ca*(d13C.disc.leaf-a)/(b-a)
+```
+
+Leaf level intrinsic water use efficiency  `iwue.leaf` can be calculated as follows:
+```{r}
+iwue.leaf <- (ca-ci.leaf)/1.6
+```
+now add the leaf level physiological indices to the previous plot:
+```{r}
+layout(matrix(1:6,nrow = 3, ncol = 2,byrow = F), widths = c(4,4),heights = c(2,2,2),respect = TRUE)
+par(mar=c(4,5,2,0.1))
+# Note you might need to adjust the ylim values.
+
+plot(TR13,ylab="d13C (permill.VPDB)",xlab="Years", main="OBSERVATIONS")
+plot(d13C.disc,ylab="D13C (permill.VPDB)",xlab="Years", main="", ylim=c(range(c(d13C.disc.leaf,d13C.disc))))
+        lines(d13C.disc.leaf, col="#0B775E", )
+plot(ca,ylab="CO2 (ppm)",xlab="Years", main="")
+plot(ci,ylab="ci (pa)",xlab="Years", main="FARQUHAR-MODEL",ylim=c(range(c(ci, ci.leaf))))
+        lines(ci.leaf, col="#0B775E")
+plot(iwue,ylab=" iwue (umol/mol)",xlab="Years", main="",ylim=c(range(c(iwue, iwue.leaf))))
+        lines(iwue.leaf, col="#0B775E")
+plot(ci/ca,ylab="ci/ca",xlab="Years", main="", ylim=c(range(c(ci/ca, ci.leaf/ca))))
+        lines(ci.leaf/ca, col="#0B775E")
+```
+Question 19: What differences do you observe between physiological indices at stem level and leaf level?
+
+#### Including Photorespiration
+The version of the Farquhar model used above is a simplified description of the isotopic discrimination. It does not include the fractionation effects during the transfer of CO2 from substomatal cavities to the site of fixation via the mesophyll, and during mitochondrial respiration and photorespiration. While the mesophyll fractionation and their values remain highly unconstrained, recent studies have recommended the inclusion of the photorespiratory effect in the discrimination model as this term contributes to an increase of Δ13C with ca rise by 0.004‰ ppm-1 (Keeling et al., 2017; Lavergne et al., 2019).
+
+
+A Farquhar model that includes the photorespiratory term is as follows:
+
+Δ13C = a+(b-a)*(ci/ca) -f*(Gst/ca)
+
+The photorespiratory term is the: f*(Gst/ca)
+
+The fractionation due to photorespiration, f, is 12 permil. 
+
+Gst (or Γ*, Gamma Star) is the CO2 compensation point in the absence of mitochondrial respiration (Pa), it is calculated from the temperature (T) and atmospheric pressure response.You can use the gammastar(tc, patm_lil) function from the rpmodel to calculate Gamma Star.
+
+
+
+The temperature temporal window that will be used will be  (July-August):
+```{r}
+gridded.tt.data <- ts(read.table("CRU_TT.txt",header=T),start=1901,frequency=1)
+tt.JA <- rowMeans(gridded.tt.data[,c(7,8)])
+tt.JA <- ts(tt.JA ,start=1901,frequency =1)
+```
+
+Calculate gamma star `Gst` as follows:
+```{r}
+tc <- tt.JA # and patm has been defined earlier.
+Gst <- gammastar(tc, patm_lil)
+```
+
+And the photorespiratory term `photoresp_term` as follows:
+```{r}
+f=12 #The fractionation due to photorespiration
+photoresp_term <- f*(Gst/ca) # ca is  in Pa
+```
+Calculate ci to include photorespiration:
+```{r}
+ci.leaf.photo <-  ca*(d13C.disc.leaf-a+photoresp_term)/(b-a)
+```
+And iwue to include photorespiration:
+```{r}
+iwue.leaf.photo <- (ca-ci.leaf.photo)/1.6
+```
+
+Plot the leaf level physiological parameters using the simple and photorespiration models:
+```{r}
+layout(matrix(1:6,nrow = 3, ncol = 2,byrow = F), widths = c(4,4),heights = c(2,2,2),respect = TRUE)
+par(mar=c(4,5,2,0.1))
+# Note you might need to adjust the ylim values.
+plot(TR13,ylab="d13C (permil.VPDB)",xlab="Years", main="OBSERVATIONS")
+plot(d13C.disc.leaf,ylab="D13C (permil.VPDB)",xlab="Years", main="")
+plot(ca,ylab="CO2 (pa)",xlab="Years", main="")
+plot(ci.leaf,ylab="ci (pa)",xlab="Years", main="FARQUHAR_MODEL",ylim=c(range(c(ci.leaf, ci.leaf.photo))))
+        lines(ci.leaf.photo, col="#0B775E")
+plot(iwue.leaf,ylab=" iwue (umol/mol)",xlab="Years", main="",ylim=c(range(c(iwue.leaf, iwue.leaf.photo))))
+        lines(iwue.leaf.photo, col="#0B775E")
+plot(ci.leaf/ca,ylab="ci/ca",xlab="Years", main="",ylim=c(range(c(ci/ca, ci.leaf.photo/ca))))
+        lines(ci.leaf.photo/ca, col="#0B775E")
+
+legend("bottomleft",c("SIMPLE", "PHOTO"),lwd= c(1,1), bty = "n", col=c("black","#0B775E"),
+       text.col=c("black","#0B775E"),ncol=1)
+```
+
+Question 20: Do the trends and amplitude of interannual variability vary between the simple model
+and the one including photorespiration?
+
+## PART 6: Interpreting iWUE and leaf gas exchange strategies 
+### Temporal trends
+From the parts above, you have now calculated physiological parameters using best practices to account for most fractionation factors, using the most updated source data, and scaling d13C measurements to leaf level.
+
+In the following, you will interpret variations of these physiological parameters. You will focus on those physiological parameters using the model with photorespiration.
+
+First, compute the trends of iWUE, ci and ci/ca over the period of record. You can use the ```lm``` and the ```summary``` functions to look at- and report the statistics (R2, p value). Here is a first example with iWUE:
+```{r}
+iwue.linear <- lm(iwue.leaf.photo ~ seq(1901,2002,by=1))
+summary(iwue.linear)
+```
+Repeat these steps for ci and ci/ca (you can copy lines 274 and 275 and replace iwue by ci and ci/ca):
+```{r}
+ci.linear <- lm(ci.leaf.photo ~ seq(1901,2002,by=1))
+summary(ci.linear)
+ci.ca.linear <- lm(ci.leaf.photo/ca ~ seq(1901,2002,by=1))
+summary(ci.ca.linear)
+```
+Plot time-series of iWUE, ci and ci/ca and add the linear trend. Here is a first example with iWUE linear trend. You need to add the linear trend for ci and ci/ca:
+```{r}
+layout(matrix(1:3,nrow = 1, ncol = 3,byrow = T), widths = c(3,3,3),heights = c(3,3,3),respect = TRUE)
+ts.plot(iwue.leaf.photo,ylab=" iwue (umol/mol)",xlab="Years", main="") 
+abline(iwue.linear, col="#0B775E",lwd=2,lty=3)
+
+ts.plot(ci.leaf.photo,ylab=" ci(pa)",xlab="Years", main="") 
+abline(ci.linear, col="#0B775E",lwd=2,lty=3)
+
+ts.plot(ci.leaf.photo/ca,ylab="ci/ca",xlab="Years", main="") 
+abline(ci.ca.linear, col="#0B775E",lwd=2,lty=3)
+```
+
+Question 21: Using computed statistics above, Describe the trends and their significance for each of the physiological indices.
+
+Question 22: How do you interpret the ci/ca trends in term of stomatal conductance? 
+
+Question 23: Was the iWUE, ci and ci/ca increase steady over time?
+
+To answer the following questions, you need to convert the ci from pa to ppm
+```{r}
+
+ci.leaf.photo.ppm <- ci.leaf.photo /(( 1.e-6 ) * patm_lil)
+
+#convert to a time series
+ci.leaf.photo.ppm <- ts(ci.leaf.photo.ppm, start=1901, frequency = 1)
+
+# rename the column to something nicer
+colnames(ci.leaf.photo.ppm) <- "ci.leaf.photo.ppm" 
+```
+You also need to use ca in ppm
+```{r}
+ca.ppm <- ATM.CO2
+```
+
+
+Question 24: What was the rate of the ci (ppm.year-1) increase over time? 
+
+Question 25: Was this rate steady/constant over time?
+
+Question 26: compared to the rate of ca, was the rate of ci:   
+      a) proportional to ca?     
+      b) similar to ca?  
+      
+To answer this question, you need to estimate the rate of ca using ```lm``` and ```summary``` functions.
+
+Estimate the ci increase relative to ca. You can do this by regressing ci by ca.
+```{r}
+ci.rate <- lm(ci.leaf.photo.ppm ~ ca.ppm)
+summary(ci.rate)
+```
+
+Question 27: Report the rate of ci and describe it in terms of a) proportional   b) similar. Note that this rate translates the ci increase for each ppm of ca increase.
+
+Note: the rate of ci can be found in the coefficient section of the output of the lm function above.
+
+Question 28: Looking at all physiological indices, their trends and rates, how do you interpret the temporal variations of stomatal conductance and/or photosynthesis of these trees?
+
+### Leaf gas exchange strategies
+With rising ca, variations in plant Δ13C have been grouped into three leaf gas-exchange strategies:
+
+  (1) constant ci  
+  (2) constant ci/ca  
+  (3) constant ca − ci   
+
+The first two strategies are considered active, and the third passive. These theoretical considerations serve as the basis for the interpretation of the physiological mechanisms underlying iWUE trends. Recently, a dynamic strategy has been described for low CO2 levels (<400 ppm) where trees switch between the 3 strategies described above.
+
+Note, we will use the ca and ci in ppm to facilitate the discussion.
+
+#### Calculate ci following scenario 1:
+```{r}
+# first, estimate the average ci from tree rings for the first decade of the record
+ci.average_1decade <- mean(ci.leaf.photo.ppm[1:10])
+ci.scenario1 <- ts(rep(ci.average_1decade, 102), start=1901, frequency=1)
+```
+#### Calculate ci following scenario 2:
+```{r}
+# first, estimate the average ci/ca from tree rings for the first decade of the record
+cica.average_1decade <- mean((ci.leaf.photo.ppm/ca.ppm)[1:10])
+ci.scenario2 <-ca.ppm*cica.average_1decade
+```
+#### Calculate ci following scenario 3:
+```{r}
+# first, estimate the average ca-ci from tree rings for the first decade of the record
+caci.average_1decade <- mean((ca.ppm-ci.leaf.photo.ppm)[1:10])
+ci.scenario3 <-ca.ppm-caci.average_1decade
+
+```
+Plot the observed ci with the predicted ci following the 3 scenarios:
+```{r}
+ts.plot(ci.leaf.photo.ppm,ylab="ci (ppm)",xlab="Years", main="", ylim=c(177,300))
+lines(ci.scenario1, lty=2, col="#F2AD00",lwd=2)
+lines(ci.scenario2, lty=5, col="#F2AD00",lwd=3)
+lines(ci.scenario3, lty=3, col="#F2AD00",lwd=2)
+legend("topleft",c("ci-observed", "ci constant","ci/ca constant","ca-ci constant"),
+       lty= c(1,2,5,3), lwd=c(1,2,3,2),bty = "n", col=c("black","#F2AD00","#F2AD00","#F2AD00"),
+       text.col=c("black","#F2AD00","#F2AD00","#F2AD00"), ncol=1)
+```
+
+Question 29: Does the observed ci (derived from tree rings) follow any of the 3 scenarios or a dynamic strategy (switching betwen different strategies)?
+
+Question 30: Does the observed ci follow a scenario consistently throughout the record?
+
+## Discussion 
+
+Based on climate trends at the LIL site and tree ring d13C sensitivity to these climate factors/trends, answer the following:
+
+Question 31: How do you interpret the change (increase) in iwue? is it driven by an increase is photosynthetic assimilation? is it driven by a decrease is stomatal conductance?
+
+Question 32: Are iwue, photosynthetic assimilation, stomatal conductance driven by:  
+
+ a) rising ca?  
+ b) trends in climate?    
+ c) both?  
+ 
+Question 33: Discuss how trends in ca and/or climate are affecting tree physiology.
+
+
+
