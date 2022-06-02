@@ -1,6 +1,9 @@
 ---
-title: "Correction and Interpretation of stable Carbon isotopes/Calculation and interpretatin of physiological indices derived from tree-ring d13C"
-output: html_notebook
+title: Correction and Interpretation of stable Carbon isotopes/Calculation and interpretatin
+  of physiological indices derived from tree-ring d13C
+output:
+  html_document:
+    df_print: paged
 ---
   
 #### COURSE: DISC, LTRR, UNIVERSITY OF ARIZONA. INSTRUCTORS: S. BELMECHERI
@@ -9,9 +12,9 @@ output: html_notebook
   
 The following code and comments should further your experience to analyze and treat tree ring d13C data (including atmosphere and climate data). This exercise relies upon raw tree-ring d13C measurements, atmospheric d13C measurements, and instrumental climate data.
 
-There are a few questions throughout to catalyze understanding and critical thinking. The analysis is broken into four main parts (including 33 questions). At the end, you should have gone through many of the steps commonly used for treating, correcting and, interpreting a d13C time series.
+There are a few questions throughout to catalyze understanding and critical thinking. The analysis is broken into six main parts (including 33 questions). At the end, you should have gone through many of the steps commonly used for treating, correcting and, interpreting a d13C time series.
 
-You will need to download the R project from https://github.com/SBelmecheri/DISCO-Notebook1.git and set your own working directory. Once you open the ```DISCO-Notebook1.Rproj``` in R studio you can open the ```RNotebook1.Rmd``` file to proceed with this exercise.
+You will need to download the R project from https://github.com/SBelmecheri/DISC22-NOTEBOOK1-C.git and set your own working directory. Once you open the ```DISC22-Notebook1-C.Rproj``` in R studio you can open the ```RNotebook1C.Rmd``` file to proceed with this exercise.
 
 ## PART 0: Setting up directories and files.
 
@@ -43,7 +46,7 @@ ABOUT THE CHRONOLOGY [LIL, Pinar de Lillo]:
 * STAND STRUCTURE: Open forest.   
 * ASPECT: NW.   
 * SLOPE: 28 degrees.  
-* TIME SPAN: 1901-2002
+
 Import the tree ring d13C dataset:
 ```{r}
 # You will also need to ensure that the name of the file is correct.
@@ -150,7 +153,7 @@ for co2 data, the Mauna Loa data from Keeling are included as a proxy in this pa
 However, these data have been updated and the most recent data are included in this Rproject/Notebook (Belmecheri & Lavergne 2021):
 ```{r}
 #read atmospheric CO2 data 
-co2 <- ATM.13C
+co2 <- ATM.CO2
 ```
 
 Apply the pin correction:
@@ -261,7 +264,7 @@ barplot(TR13.corr_tt.correl[1,2:13],las=3,col=c("yellow"),ylab="Correlation", ma
 #precipitation
 barplot(TR13.corr_pp.correl[1,2:13],las=3,col=c("blue2"),ylab="Correlation", main="PCP", ylim=c(-0.5,0.5))
 # VPD
-barplot(TR13.corr_vpd.correl[1,2:13],las=3,col=c("yellow"),ylab="Correlation", main="VPD", ylim=c(-0.5,0.5))
+barplot(TR13.corr_vpd.correl[1,2:13],las=3,col=c("green"),ylab="Correlation", main="VPD", ylim=c(-0.5,0.5))
 ```
 
 Question 10: Describe the correlations between d13C and various months of the year/growing season.
@@ -366,25 +369,6 @@ You will also need to install ```rpmodel``` packages:
 library(rpmodel)
 ```
 
-Import and subset atmospheric data from ```ATM.txt```: 
-```{r}
-ATM <- ts((read.table("ATM.txt", header=T)), start=1901, frequency=1)
-# subset d13C
-ATM.13C <- ATM[,"atm13C"]
-# subset CO2
-ATM.CO2 <- ATM[,"atmCO2"]
-```
-
-Plot the atmospheric data (```ATM.13C``` and ```ATM.CO2```) dataset:
-```{r}
-layout(matrix(1:2,nrow = 1, ncol = 2,byrow = T), widths = c(3,3),heights = c(3,3),respect = TRUE)
-ts.plot(ATM.13C,ylab="d13C (permil.VPDB)",xlab="Years", col="#9C964A",main="d13C")
-ts.plot(ATM.CO2,ylab="CO2 (ppm)",xlab="Years", main="CO2")
-
-```
- 
-Question 16: Compare both trends. Describe and interpret the relationship between the decline in d13C and the increase in CO2 concentration. 
-
 ### PART 5.1: Calculating iWUE- SIMPLE APPROACH 
 
 The Farquhar, O'Leary, and Berry 1982 biochemical model describes the isotopic discrimination against 13C (Δ13C) during carbon diffusion and fixation by plants. The Farquhar et al. equation can be written as follows:
@@ -408,30 +392,10 @@ We know `ca` from measurements. `ca` is in ppm. You can use `ca` in ppm as follo
 
 ca <- ATM.CO2 # in ppm
 ```
-Or use `ca` in Pa as follows:
-```{r}
-# you need  r package "rpmodel"
-library("rpmodel")
-```
-and the function `patm {rpmodel}` to calculate atmospheric pressure at sea level as function of elevation (site elevation).
-```{r}
-elv= 1600 # Elevation above sea-level (m.a.s.l.)
-patm_lil <- patm(elv, patm0 = 101325)
-```
-calculate `ca` as follows:
-```{r}
-ca <- ( 1.e-6 ) * ca * patm_lil  # in Pa
-```
-convert `ca` to a time series:
-```{r}
-ca <- ts(ca, start=1901, frequency=1)
-```
 
-Δ13C (`d13C.disc`) can then be calculated as follows:
-```{r}
-d13C.disc <- (ATM.13C-TR13)/(1+TR13/1000)
-```
-And `ci` as follows:
+Δ13C (`d13C.disc`) is calculated above.
+
+And `ci` as follows: Warning set up ca to ca_ppm or ca_pa
 ```{r}
 a=4.4
 b=28
@@ -478,7 +442,7 @@ d=2.1 # for d13C measured in cellulose
 
 This correction can be made as follows: 
 ```{r}
-d13C.disc.leaf <- (ATM.13C-(TR13-d))/(1+(TR13-d)/1000)
+d13C.disc.leaf <- (ATM.13C-(TR13.ts-d))/(1+(TR13.ts-d)/1000)
 ```
 
 Leaf level ci `ci.leaf` can be calculated as follows:
@@ -496,7 +460,7 @@ layout(matrix(1:6,nrow = 3, ncol = 2,byrow = F), widths = c(4,4),heights = c(2,2
 par(mar=c(4,5,2,0.1))
 # Note you might need to adjust the ylim values.
 
-plot(TR13,ylab="d13C (permill.VPDB)",xlab="Years", main="OBSERVATIONS")
+plot(TR13.ts,ylab="d13C (permill.VPDB)",xlab="Years", main="OBSERVATIONS")
 plot(d13C.disc,ylab="D13C (permill.VPDB)",xlab="Years", main="", ylim=c(range(c(d13C.disc.leaf,d13C.disc))))
         lines(d13C.disc.leaf, col="#0B775E", )
 plot(ca,ylab="CO2 (ppm)",xlab="Years", main="")
@@ -507,7 +471,7 @@ plot(iwue,ylab=" iwue (umol/mol)",xlab="Years", main="",ylim=c(range(c(iwue, iwu
 plot(ci/ca,ylab="ci/ca",xlab="Years", main="", ylim=c(range(c(ci/ca, ci.leaf/ca))))
         lines(ci.leaf/ca, col="#0B775E")
 ```
-Question 19: What differences do you observe between physiological indices at stem level and leaf level?
+Question 19: What differences do you observe between physiological indices at stem level and lat eaf level?
 
 #### Including Photorespiration
 The version of the Farquhar model used above is a simplified description of the isotopic discrimination. It does not include the fractionation effects during the transfer of CO2 from substomatal cavities to the site of fixation via the mesophyll, and during mitochondrial respiration and photorespiration. While the mesophyll fractionation and their values remain highly unconstrained, recent studies have recommended the inclusion of the photorespiratory effect in the discrimination model as this term contributes to an increase of Δ13C with ca rise by 0.004‰ ppm-1 (Keeling et al., 2017; Lavergne et al., 2019).
@@ -541,8 +505,17 @@ Gst <- gammastar(tc, patm_lil)
 And the photorespiratory term `photoresp_term` as follows:
 ```{r}
 f=12 #The fractionation due to photorespiration
-photoresp_term <- f*(Gst/ca) # ca is  in Pa
+# convert ca from ppm to pa 
+# Use the function `patm {rpmodel}` to calculate atmospheric pressure at sea level as function of elevation (site elevation).
+
+elv= 1600 # Elevation above sea-level (m.a.s.l.) from metadata desribed above
+patm_lil <- patm(elv, patm0 = 101325)
+ca_pa <- co2_to_ca(co2, patm_lil)  # in Pa
+ca_pa <- ts(ca, start=1901, frequency=1)
+photoresp_term <- f*(Gst/ca_pa) # ca is  in Pa
 ```
+
+
 Calculate ci to include photorespiration:
 ```{r}
 ci.leaf.photo <-  ca*(d13C.disc.leaf-a+photoresp_term)/(b-a)
@@ -557,7 +530,7 @@ Plot the leaf level physiological parameters using the simple and photorespirati
 layout(matrix(1:6,nrow = 3, ncol = 2,byrow = F), widths = c(4,4),heights = c(2,2,2),respect = TRUE)
 par(mar=c(4,5,2,0.1))
 # Note you might need to adjust the ylim values.
-plot(TR13,ylab="d13C (permil.VPDB)",xlab="Years", main="OBSERVATIONS")
+plot(TR13.ts,ylab="d13C (permil.VPDB)",xlab="Years", main="OBSERVATIONS")
 plot(d13C.disc.leaf,ylab="D13C (permil.VPDB)",xlab="Years", main="")
 plot(ca,ylab="CO2 (pa)",xlab="Years", main="")
 plot(ci.leaf,ylab="ci (pa)",xlab="Years", main="FARQUHAR_MODEL",ylim=c(range(c(ci.leaf, ci.leaf.photo))))
@@ -611,22 +584,7 @@ Question 22: How do you interpret the ci/ca trends in term of stomatal conductan
 
 Question 23: Was the iWUE, ci and ci/ca increase steady over time?
 
-To answer the following questions, you need to convert the ci from pa to ppm
-```{r}
-
-ci.leaf.photo.ppm <- ci.leaf.photo /(( 1.e-6 ) * patm_lil)
-
-#convert to a time series
-ci.leaf.photo.ppm <- ts(ci.leaf.photo.ppm, start=1901, frequency = 1)
-
-# rename the column to something nicer
-colnames(ci.leaf.photo.ppm) <- "ci.leaf.photo.ppm" 
-```
-You also need to use ca in ppm
-```{r}
-ca.ppm <- ATM.CO2
-```
-
+To answer the following questions, you need to use ci and ca in ppm
 
 Question 24: What was the rate of the ci (ppm.year-1) increase over time? 
 
@@ -664,25 +622,25 @@ Note, we will use the ca and ci in ppm to facilitate the discussion.
 #### Calculate ci following scenario 1:
 ```{r}
 # first, estimate the average ci from tree rings for the first decade of the record
-ci.average_1decade <- mean(ci.leaf.photo.ppm[1:10])
+ci.average_1decade <- mean(ci.leaf.photo[1:10])
 ci.scenario1 <- ts(rep(ci.average_1decade, 102), start=1901, frequency=1)
 ```
 #### Calculate ci following scenario 2:
 ```{r}
 # first, estimate the average ci/ca from tree rings for the first decade of the record
-cica.average_1decade <- mean((ci.leaf.photo.ppm/ca.ppm)[1:10])
-ci.scenario2 <-ca.ppm*cica.average_1decade
+cica.average_1decade <- mean((ci.leaf.photo/ca)[1:10])
+ci.scenario2 <-ca*cica.average_1decade
 ```
 #### Calculate ci following scenario 3:
 ```{r}
 # first, estimate the average ca-ci from tree rings for the first decade of the record
-caci.average_1decade <- mean((ca.ppm-ci.leaf.photo.ppm)[1:10])
-ci.scenario3 <-ca.ppm-caci.average_1decade
+caci.average_1decade <- mean((ca-ci.leaf.photo)[1:10])
+ci.scenario3 <-ca-caci.average_1decade
 
 ```
 Plot the observed ci with the predicted ci following the 3 scenarios:
 ```{r}
-ts.plot(ci.leaf.photo.ppm,ylab="ci (ppm)",xlab="Years", main="", ylim=c(177,300))
+ts.plot(ci.leaf.photo,ylab="ci (ppm)",xlab="Years", main="", ylim=c(177,300))
 lines(ci.scenario1, lty=2, col="#F2AD00",lwd=2)
 lines(ci.scenario2, lty=5, col="#F2AD00",lwd=3)
 lines(ci.scenario3, lty=3, col="#F2AD00",lwd=2)
